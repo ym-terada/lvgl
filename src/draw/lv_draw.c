@@ -96,13 +96,14 @@ void lv_draw_finalize_task_creation(lv_layer_t * layer, lv_draw_task_t * t)
 
     /*Send LV_EVENT_DRAW_TASK_ADDED and dispatch only on the "main" draw_task
      *and not on the draw tasks added in the event.
-     *Sending LV_EVENT_DRAW_TASK_ADDED events might cause recursive event sends
-     *Dispatching might remove the "main" draw task while it's still being used in the event*/
+     *Sending LV_EVENT_DRAW_TASK_ADDED events might cause recursive event sends and besides
+     *dispatching might remove the "main" draw task while it's still being used in the event*/
 
     if(info->task_running == false) {
-        info->task_running = true;
         if(base_dsc->obj && lv_obj_has_flag(base_dsc->obj, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS)) {
+            info->task_running = true;
             lv_obj_send_event(base_dsc->obj, LV_EVENT_DRAW_TASK_ADDED, t);
+            info->task_running = false;
         }
 
         /*Let the draw units set their preference score*/
@@ -115,7 +116,6 @@ void lv_draw_finalize_task_creation(lv_layer_t * layer, lv_draw_task_t * t)
         }
 
         lv_draw_dispatch();
-        info->task_running = false;
     }
     else {
         /*Let the draw units set their preference score*/

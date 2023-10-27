@@ -149,6 +149,18 @@ void lv_sdl_window_set_title(lv_display_t * disp, const char * title)
     SDL_SetWindowTitle(dsc->window, title);
 }
 
+SDL_Renderer * lv_sdl_window_get_renderer(lv_display_t * disp)
+{
+    lv_sdl_window_t * dsc = lv_display_get_driver_data(disp);
+    return dsc->renderer;
+}
+
+SDL_Texture * lv_sdl_window_get_texture(lv_display_t * disp)
+{
+    lv_sdl_window_t * dsc = lv_display_get_driver_data(disp);
+    return dsc->texture;
+}
+
 void lv_sdl_quit()
 {
     if(inited) {
@@ -286,14 +298,14 @@ static void window_create(lv_display_t * disp)
 static void window_update(lv_display_t * disp)
 {
     lv_sdl_window_t * dsc = lv_display_get_driver_data(disp);
-    lv_coord_t hor_res = lv_display_get_horizontal_resolution(disp);
-    uint32_t stride = lv_draw_buf_width_to_stride(hor_res, lv_display_get_color_format(disp));
-    SDL_UpdateTexture(dsc->texture, NULL, dsc->fb_act, stride);
-
-    SDL_RenderClear(dsc->renderer);
-
-    /*Update the renderer with the texture containing the rendered image*/
-    SDL_RenderCopy(dsc->renderer, dsc->texture, NULL, NULL);
+    //    lv_coord_t hor_res = lv_display_get_horizontal_resolution(disp);
+    //    uint32_t stride = lv_draw_buf_width_to_stride(hor_res, lv_display_get_color_format(disp));
+    //    SDL_UpdateTexture(dsc->texture, NULL, dsc->fb_act, stride);
+    //
+    //    SDL_RenderClear(dsc->renderer);
+    //
+    //    /*Update the renderer with the texture containing the rendered image*/
+    //    SDL_RenderCopy(dsc->renderer, dsc->texture, NULL, NULL);
     SDL_RenderPresent(dsc->renderer);
 }
 

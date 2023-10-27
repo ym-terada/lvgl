@@ -128,7 +128,7 @@ typedef struct _lv_draw_unit_t {
      * @param task
      * @return
      */
-    int32_t (*evaluate_cb)(struct _lv_draw_unit_t * draw_unit, lv_draw_task_t * task);
+    void (*evaluate_cb)(struct _lv_draw_unit_t * draw_unit, lv_draw_task_t * task);
 } lv_draw_unit_t;
 
 
@@ -170,6 +170,7 @@ typedef struct {
     uint32_t id1;
     uint32_t id2;
     lv_layer_t * layer;
+    void * user_data;
 } lv_draw_dsc_base_t;
 
 typedef struct {
