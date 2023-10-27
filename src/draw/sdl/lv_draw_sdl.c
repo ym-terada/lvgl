@@ -119,7 +119,7 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
     lv_area_t a;
     _lv_area_intersect(&a, u->base_unit.clip_area, &t->area);
     dest_layer.buf_area = *u->base_unit.clip_area;
-    dest_layer.clip_area = *u->base_unit.clip_area;
+    dest_layer._clip_area = *u->base_unit.clip_area;
 
     lv_display_t * disp = _lv_refr_get_disp_refreshing();
 
