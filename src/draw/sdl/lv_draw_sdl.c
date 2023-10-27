@@ -136,9 +136,20 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
                 lv_draw_rect(&dest_layer, &rect_dsc, &t->area);
             }
             break;
-        //        case LV_DRAW_TASK_TYPE_BORDER:
-        //            lv_draw_sw_border((lv_draw_unit_t *)u, t->draw_dsc, &t->area);
-        //            break;
+        case LV_DRAW_TASK_TYPE_BORDER: {
+                lv_draw_border_dsc_t * border_dsc = t->draw_dsc;;
+                lv_draw_rect_dsc_t rect_dsc;
+                lv_draw_rect_dsc_init(&rect_dsc);
+                rect_dsc.base.user_data = lv_sdl_window_get_renderer(disp);
+                rect_dsc.bg_opa = LV_OPA_TRANSP;
+                rect_dsc.radius = border_dsc->radius;
+                rect_dsc.border_color = border_dsc->color;
+                rect_dsc.border_opa = border_dsc->opa;
+                rect_dsc.border_side = border_dsc->side;
+                rect_dsc.border_width = border_dsc->width;
+                lv_draw_rect(&dest_layer, &rect_dsc, &t->area);
+                break;
+            }
         //        case LV_DRAW_TASK_TYPE_BOX_SHADOW:
         //            lv_draw_sw_box_shadow((lv_draw_unit_t *)u, t->draw_dsc, &t->area);
         //            break;
@@ -153,15 +164,20 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
                 lv_draw_label(&dest_layer, &label_dsc, &t->area);
             }
             break;
-        //        case LV_DRAW_TASK_TYPE_IMAGE:
-        //            lv_draw_sw_image((lv_draw_unit_t *)u, t->draw_dsc, &t->area);
-        //            break;
-        //        case LV_DRAW_TASK_TYPE_ARC:
-        //            lv_draw_sw_arc((lv_draw_unit_t *)u, t->draw_dsc, &t->area);
-        //            break;
-        //        case LV_DRAW_TASK_TYPE_LINE:
-        //            lv_draw_sw_line((lv_draw_unit_t *)u, t->draw_dsc);
-        //            break;
+        case LV_DRAW_TASK_TYPE_IMAGE: {
+                lv_draw_image_dsc_t image_dsc;
+                lv_draw_image_dsc_init(&image_dsc);
+                lv_memcpy(&image_dsc, t->draw_dsc, sizeof(image_dsc));
+                image_dsc.base.user_data = lv_sdl_window_get_renderer(disp);
+                lv_draw_image(&dest_layer, &image_dsc, &t->area);
+                break;
+            }
+        //                case LV_DRAW_TASK_TYPE_ARC:
+        //                    lv_draw_sw_arc((lv_draw_unit_t *)u, t->draw_dsc, &t->area);
+        //                    break;
+        //                case LV_DRAW_TASK_TYPE_LINE:
+        //                    lv_draw_sw_line((lv_draw_unit_t *)u, t->draw_dsc);
+        //                    break;
         //        case LV_DRAW_TASK_TYPE_TRIANGLE:
         //            lv_draw_sw_triangle((lv_draw_unit_t *)u, t->draw_dsc);
         //            break;
