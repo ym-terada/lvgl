@@ -741,10 +741,10 @@ static void draw_image(lv_event_t * e)
                 img_clip_area.y1 = bg_coords.y1 + ptop;
                 img_clip_area.x2 = bg_coords.x2 - pright;
                 img_clip_area.y2 = bg_coords.y2 - pbottom;
-                const lv_area_t clip_area_ori = layer->clip_area;
+                const lv_area_t clip_area_ori = layer->_clip_area;
 
-                if(!_lv_area_intersect(&img_clip_area, &layer->clip_area, &img_clip_area)) return;
-                layer->clip_area = img_clip_area;
+                if(!_lv_area_intersect(&img_clip_area, &layer->_clip_area, &img_clip_area)) return;
+                layer->_clip_area = img_clip_area;
 
                 lv_area_t coords_tmp;
                 lv_coord_t offset_x = img->offset.x % img->w;
@@ -762,7 +762,7 @@ static void draw_image(lv_event_t * e)
                         lv_draw_image(layer, &img_dsc, &coords_tmp);
                     }
                 }
-                layer->clip_area = clip_area_ori;
+                layer->_clip_area = clip_area_ori;
             }
             else if(img->src_type == LV_IMAGE_SRC_SYMBOL) {
                 lv_draw_label_dsc_t label_dsc;

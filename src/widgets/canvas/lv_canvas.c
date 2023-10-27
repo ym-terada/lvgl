@@ -302,7 +302,7 @@ void lv_canvas_init_layer(lv_obj_t * canvas, lv_layer_t * layer)
     layer->buf = lv_draw_buf_align((uint8_t *)dsc->data, dsc->header.cf);
     layer->color_format = dsc->header.cf;
     layer->buf_area = canvas_area;
-    layer->clip_area = canvas_area;
+    layer->_clip_area = canvas_area;
 }
 
 

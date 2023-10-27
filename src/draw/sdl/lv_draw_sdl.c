@@ -118,7 +118,7 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
 
     lv_area_t a;
     _lv_area_intersect(&a, u->base_unit.clip_area, &t->area);
-    dest_layer.buf_area = a;
+    dest_layer.buf_area = *u->base_unit.clip_area;
     dest_layer.clip_area = *u->base_unit.clip_area;
 
     lv_display_t * disp = _lv_refr_get_disp_refreshing();
@@ -145,14 +145,14 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
         //        case LV_DRAW_TASK_TYPE_BG_IMG:
         //            lv_draw_sw_bg_image((lv_draw_unit_t *)u, t->draw_dsc, &t->area);
         //            break;
-        //        case LV_DRAW_TASK_TYPE_LABEL: {
-        //            lv_draw_label_dsc_t label_dsc;
-        //            lv_draw_label_dsc_init(&label_dsc);
-        //            lv_memcpy(&label_dsc, t->draw_dsc, sizeof(label_dsc));
-        //            label_dsc.base.user_data = lv_sdl_window_get_renderer(disp);
-        //            lv_draw_label(&dest_layer, &label_dsc, &t->area);
-        //        }
-        //            break;
+        case LV_DRAW_TASK_TYPE_LABEL: {
+                lv_draw_label_dsc_t label_dsc;
+                lv_draw_label_dsc_init(&label_dsc);
+                lv_memcpy(&label_dsc, t->draw_dsc, sizeof(label_dsc));
+                label_dsc.base.user_data = lv_sdl_window_get_renderer(disp);
+                lv_draw_label(&dest_layer, &label_dsc, &t->area);
+            }
+            break;
         //        case LV_DRAW_TASK_TYPE_IMAGE:
         //            lv_draw_sw_image((lv_draw_unit_t *)u, t->draw_dsc, &t->area);
         //            break;

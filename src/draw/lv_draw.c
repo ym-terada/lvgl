@@ -68,7 +68,7 @@ lv_draw_task_t * lv_draw_add_task(lv_layer_t * layer, const lv_area_t * coords)
     lv_memzero(new_task, sizeof(*new_task));
 
     new_task->area = *coords;
-    new_task->clip_area = layer->clip_area;
+    new_task->clip_area = layer->_clip_area;
     new_task->state = LV_DRAW_TASK_STATE_QUEUED;
 
     /*Find the tail*/
@@ -319,7 +319,7 @@ lv_layer_t * lv_draw_layer_create(lv_layer_t * parent_layer, lv_color_format_t c
     lv_memzero(new_layer, sizeof(lv_layer_t));
 
     new_layer->parent = parent_layer;
-    new_layer->clip_area = *area;
+    new_layer->_clip_area = *area;
     new_layer->buf_area = *area;
     new_layer->color_format = color_format;
 
