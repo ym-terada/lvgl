@@ -224,16 +224,16 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
 
     SDL_UpdateTexture(texture, NULL, sdl_render_buf, rect.w * 4);
 
-    //    SDL_Rect clip_rect;
-    //    rect.x = u->base_unit.clip_area->x1;
-    //    rect.y = u->base_unit.clip_area->y1;
-    //    rect.w = lv_area_get_width(u->base_unit.clip_area);
-    //    rect.h = lv_area_get_height(u->base_unit.clip_area);
+    SDL_Rect clip_rect;
+    clip_rect.x = u->base_unit.clip_area->x1;
+    clip_rect.y = u->base_unit.clip_area->y1;
+    clip_rect.w = lv_area_get_width(u->base_unit.clip_area);
+    clip_rect.h = lv_area_get_height(u->base_unit.clip_area);
 
-    //    SDL_RenderSetClipRect(renderer, &clip_rect);
+    SDL_RenderSetClipRect(renderer, &clip_rect);
     SDL_RenderCopy(renderer, texture, NULL, &rect);
     SDL_DestroyTexture(texture);
-    //    SDL_RenderSetClipRect(renderer, NULL);
+    SDL_RenderSetClipRect(renderer, NULL);
 }
 
 #endif /*LV_USE_DRAW_SDL*/
