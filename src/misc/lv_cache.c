@@ -69,12 +69,12 @@ lv_cache_entry_t * lv_cache_add(size_t size)
     return _cache_manager.add_cb(size);
 }
 
-lv_cache_entry_t * lv_cache_find(const void * src_ptr, lv_cache_src_type_t src_type, uint32_t param1, uint32_t param2)
+lv_cache_entry_t * lv_cache_find(const void * info, size_t info_size)
 {
     LV_ASSERT(_cache_manager.locked);
     if(_cache_manager.find_cb == NULL) return NULL;
 
-    return _cache_manager.find_cb(src_ptr, src_type, param1, param2);
+    return _cache_manager.find_cb(info, info_size);
 }
 
 void lv_cache_invalidate(lv_cache_entry_t * entry)

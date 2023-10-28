@@ -26,7 +26,7 @@
  *  STATIC PROTOTYPES
  **********************/
 static lv_cache_entry_t * add_cb(size_t size);
-static lv_cache_entry_t * find_cb(const void * src, lv_cache_src_type_t src_type, uint32_t param1, uint32_t param2);
+static lv_cache_entry_t * find_cb(const void * info, size_t info_size);
 static void invalidate_cb(lv_cache_entry_t * entry);
 static const void * get_data_cb(lv_cache_entry_t * entry);
 static void release_cb(lv_cache_entry_t * entry);
@@ -106,14 +106,12 @@ static lv_cache_entry_t * add_cb(size_t size)
     return entry;
 }
 
-static lv_cache_entry_t * find_cb(const void * src, lv_cache_src_type_t src_type, uint32_t param1, uint32_t param2)
+static lv_cache_entry_t * find_cb(const void * info, size_t info_size)
 {
     lv_cache_entry_t * entry = _lv_ll_get_head(&dsc.entry_ll);
     while(entry) {
-        if(param1 == entry->param1 && param2 == entry->param2 && src_type == entry->src_type &&
-           ((src_type == LV_CACHE_SRC_TYPE_PTR && src == entry->src) ||
-            (src_type == LV_CACHE_SRC_TYPE_STR && strcmp(src, entry->src) == 0))) {
-            return entry;
+        if(entry->info_size == info_size) {
+            if(entry->compare_cb(entry, info)) return entry;
         }
 
         entry = _lv_ll_get_next(&dsc.entry_ll, entry);
@@ -129,8 +127,8 @@ static void invalidate_cb(lv_cache_entry_t * entry)
     dsc.cur_size -= entry->data_size;
     LV_TRACE_CACHE("Drop cache: %u bytes", (uint32_t)entry->data_size);
 
-    if(entry->free_src) lv_free((void *)entry->src);
-    if(entry->free_data) lv_draw_buf_free((void *)entry->data);
+    //    if(entry->free_src) lv_free((void *)entry->src);
+    //    if(entry->free_data) lv_draw_buf_free((void *)entry->data);
 
     _lv_ll_remove(&dsc.entry_ll, entry);
     lv_free(entry);

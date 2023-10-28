@@ -15,6 +15,7 @@ extern "C" {
  *********************/
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include "../osal/lv_os.h"
 
 /*********************
@@ -25,21 +26,29 @@ extern "C" {
  *      TYPEDEFS
  **********************/
 
-typedef enum {
-    LV_CACHE_SRC_TYPE_PTR,
-    LV_CACHE_SRC_TYPE_STR,
-    _LV_CACHE_SRC_TYPE_LAST,
-} lv_cache_src_type_t;
-
 typedef struct _lv_cache_entry_t {
     /**The image source or other source related to the cache content.*/
     const void * src;
 
-    lv_cache_src_type_t src_type;
+    /**Some data to describe the cache entry*/
+    const void * info;
 
-    /** Some extra parameters to describe the source. E.g. the current frame of an animation*/
-    uint32_t param1;
-    uint32_t param2;
+    size_t info_size;
+
+    /**
+     * Called to compare cache entry with an info.
+     * Before calling this function LVGL checks that `info_size` of both entries are the same.
+     * @param e     the cache entry to compare
+     * @param info  the info to compare
+     * @return      true: `info` is related to `e`; false: they are unrelated
+     */
+    bool (*compare_cb)(struct _lv_cache_entry_t * e, const void * info);
+
+    /**
+     * Called when the entry is invalidated to free info and src
+     * @param e     the cache entry to free
+     */
+    void (*invalidate_cb)(struct _lv_cache_entry_t * e);
 
     /** User processing tag*/
     uint32_t process_state;
@@ -61,12 +70,6 @@ typedef struct _lv_cache_entry_t {
      * A data will dropped from the cache only if its usage_count is zero */
     uint32_t usage_count;
 
-    /** Call `lv_free` on `src` when the entry is removed from the cache */
-    uint32_t free_src   : 1;
-
-    /** Call `lv_draw_buf_free` on `data` when the entry is removed from the cache */
-    uint32_t free_data   : 1;
-
     /** The cache entry was larger then the max cache size so only a temporary entry was allocated
      * The entry will be closed and freed in `lv_cache_release` automatically*/
     uint32_t temporary  : 1;
@@ -86,15 +89,12 @@ typedef struct _lv_cache_entry_t {
 typedef lv_cache_entry_t * (*lv_cache_add_cb)(size_t size);
 
 /**
- * Find a cache entry
- * @param src_ptr   pointer to the source data
- * @param src_type  source type (`LV_CACHE_SRC_TYPE_PTR` or `LV_CACHE_SRC_TYPE_STR`)
- * @param param1    param1, which was set when the cache was added
- * @param param2    param2, which was set when the cache was added
- * @return          the cache entry with given source and parameters or NULL if not found
+ * Find a cache entry based on its info
+ * @param info      the info to find
+ * @param info_size size of info
+ * @return          the cache entry with given info or NULL if not found
  */
-typedef lv_cache_entry_t * (*lv_cache_find_cb)(const void * src_ptr, lv_cache_src_type_t src_type, uint32_t param1,
-                                               uint32_t param2);
+typedef lv_cache_entry_t * (*lv_cache_find_cb)(const void * info, size_t info_size);
 
 /**
  * Invalidate (drop) a cache entry
@@ -167,18 +167,17 @@ void lv_cache_set_manager(lv_cache_manager_t * manager);
  */
 lv_cache_entry_t * lv_cache_add(size_t size);
 
-/**
- * Find a cache entry with pointer source type
- * @param src_ptr   pointer to the source data
- * @param src_type  source type (`LV_CACHE_SRC_TYPE_PTR` or `LV_CACHE_SRC_TYPE_STR`)
- * @param param1    param1, which was set when the cache was added
- * @param param2    param2, which was set when the cache was added
- * @return          the cache entry with given source and parameters or NULL if not found
- */
-lv_cache_entry_t * lv_cache_find(const void * src, lv_cache_src_type_t src_type, uint32_t param1, uint32_t param2);
 
 /**
- * Invalidate (drop) a cache entry
+ * Find a cache entry based on its info
+ * @param info      the info to find
+ * @param info_size size of info
+ * @return          the cache entry with given info or NULL if not found
+ */
+lv_cache_entry_t * lv_cache_find(const void * info, size_t info_size);
+
+/**
+ * Invalidate (drop) a cache entry. It will call the entry's `invalidate_cb` to free the resources
  * @param entry    the entry to invalidate. (can be retrieved by `lv_cache_find()`)
  */
 void lv_cache_invalidate(lv_cache_entry_t * entry);

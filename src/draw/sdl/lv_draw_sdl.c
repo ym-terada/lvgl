@@ -103,6 +103,10 @@ static void evaluate(lv_draw_unit_t * draw_unit, lv_draw_task_t * task)
 
 uint8_t sdl_render_buf[1024 * 1024 * 4];
 
+typedef struct {
+    const void * draw_dsc;
+    lv_area_t area;
+} cache_info_t;
 
 static void execute_drawing(lv_draw_sdl_unit_t * u)
 {
@@ -112,14 +116,14 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
     lv_layer_t dest_layer;
     lv_memzero(&dest_layer, sizeof(dest_layer));
     //    uint8_t * sdl_render_buf = malloc(1024*1024*4);
-    lv_memzero(sdl_render_buf, 1024 * 1024 * 4);
     dest_layer.buf = lv_draw_buf_align(sdl_render_buf, LV_COLOR_FORMAT_ARGB8888);
     dest_layer.color_format = LV_COLOR_FORMAT_ARGB8888;
 
     lv_area_t a;
     _lv_area_intersect(&a, u->base_unit.clip_area, &t->area);
-    dest_layer.buf_area = *u->base_unit.clip_area;
-    dest_layer._clip_area = *u->base_unit.clip_area;
+    dest_layer.buf_area = t->area;
+    dest_layer._clip_area = t->area;
+    lv_memzero(sdl_render_buf, lv_area_get_size(&dest_layer.buf_area) * 4 + 100);
 
     lv_display_t * disp = _lv_refr_get_disp_refreshing();
 
@@ -133,6 +137,14 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
                 rect_dsc.bg_grad = fill_dsc->grad;
                 rect_dsc.radius = fill_dsc->radius;
                 rect_dsc.bg_opa = fill_dsc->opa;
+
+
+                //                cache_info_t info;
+                //                info.draw_dsc = &rect_dsc;
+                //                info.area = t->area;
+
+                //                lv_cache_find(info, info_size)
+                //
                 lv_draw_rect(&dest_layer, &rect_dsc, &t->area);
             }
             break;
@@ -204,13 +216,24 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
     rect.w = lv_area_get_width(&dest_layer.buf_area);
     rect.h = lv_area_get_height(&dest_layer.buf_area);
 
+    SDL_Renderer * renderer = lv_sdl_window_get_renderer(disp);
+
     SDL_Texture * texture = SDL_CreateTexture(lv_sdl_window_get_renderer(disp), SDL_PIXELFORMAT_ARGB8888,
                                               SDL_TEXTUREACCESS_STATIC, rect.w, rect.h);
     SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
 
     SDL_UpdateTexture(texture, NULL, sdl_render_buf, rect.w * 4);
-    SDL_RenderCopy(lv_sdl_window_get_renderer(disp), texture, NULL, &rect);
+
+    //    SDL_Rect clip_rect;
+    //    rect.x = u->base_unit.clip_area->x1;
+    //    rect.y = u->base_unit.clip_area->y1;
+    //    rect.w = lv_area_get_width(u->base_unit.clip_area);
+    //    rect.h = lv_area_get_height(u->base_unit.clip_area);
+
+    //    SDL_RenderSetClipRect(renderer, &clip_rect);
+    SDL_RenderCopy(renderer, texture, NULL, &rect);
     SDL_DestroyTexture(texture);
+    //    SDL_RenderSetClipRect(renderer, NULL);
 }
 
 #endif /*LV_USE_DRAW_SDL*/
