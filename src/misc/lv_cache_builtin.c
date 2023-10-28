@@ -25,7 +25,7 @@
 /**********************
  *  STATIC PROTOTYPES
  **********************/
-static lv_cache_entry_t * add_cb(size_t size);
+static lv_cache_entry_t * add_cb(const void * data, size_t data_size, size_t memory_usage);
 static lv_cache_entry_t * find_cb(const void * info, size_t info_size);
 static void invalidate_cb(lv_cache_entry_t * entry);
 static const void * get_data_cb(lv_cache_entry_t * entry);
@@ -69,15 +69,15 @@ void _lv_cache_builtin_init(void)
  *   STATIC FUNCTIONS
  **********************/
 
-static lv_cache_entry_t * add_cb(size_t size)
+static lv_cache_entry_t * add_cb(const void * data, size_t data_size, size_t memory_usage)
 {
     size_t max_size = lv_cache_get_max_size();
     /*Can't cache data larger than max size*/
 
-    bool temporary = size > max_size ? true : false;
+    bool temporary = memory_usage > max_size ? true : false;
     if(!temporary) {
         /*Keep dropping items until there is enough space*/
-        while(dsc.cur_size + size > _cache_manager.max_size) {
+        while(dsc.cur_size + memory_usage > _cache_manager.max_size) {
             bool ret = drop_youngest();
 
             /*No item could be dropped.
@@ -91,27 +91,29 @@ static lv_cache_entry_t * add_cb(size_t size)
 
     lv_cache_entry_t * entry = _lv_ll_ins_head(&dsc.entry_ll);
     lv_memzero(entry, sizeof(lv_cache_entry_t));
-    entry->data_size = size;
+    entry->memory_usage = memory_usage;
     entry->weight = 1;
     entry->temporary = temporary;
+    entry->data = data;
+    entry->data_size = data_size;
 
     if(temporary) {
-        LV_TRACE_CACHE("Add temporary cache: %lu bytes", (unsigned long)size);
+        LV_TRACE_CACHE("Add temporary cache: %lu bytes", (unsigned long)memory_usage);
     }
     else {
-        LV_TRACE_CACHE("Add cache: %lu bytes", (unsigned long)size);
-        dsc.cur_size += size;
+        LV_TRACE_CACHE("Add cache: %lu bytes", (unsigned long)memory_usage);
+        dsc.cur_size += memory_usage;
     }
 
     return entry;
 }
 
-static lv_cache_entry_t * find_cb(const void * info, size_t info_size)
+static lv_cache_entry_t * find_cb(const void * data, size_t data_size)
 {
     lv_cache_entry_t * entry = _lv_ll_get_head(&dsc.entry_ll);
     while(entry) {
-        if(entry->info_size == info_size) {
-            if(entry->compare_cb(entry, info)) return entry;
+        if(entry->data_size == data_size) {
+            if(entry->compare_cb(entry->data, data, data_size)) return entry;
         }
 
         entry = _lv_ll_get_next(&dsc.entry_ll, entry);
@@ -124,11 +126,10 @@ static void invalidate_cb(lv_cache_entry_t * entry)
 {
     if(entry == NULL) return;
 
-    dsc.cur_size -= entry->data_size;
-    LV_TRACE_CACHE("Drop cache: %u bytes", (uint32_t)entry->data_size);
+    dsc.cur_size -= entry->memory_usage;
+    LV_TRACE_CACHE("Drop cache: %u bytes", (uint32_t)entry->memory_usage);
 
-    //    if(entry->free_src) lv_free((void *)entry->src);
-    //    if(entry->free_data) lv_draw_buf_free((void *)entry->data);
+    entry->invalidate_cb(entry);
 
     _lv_ll_remove(&dsc.entry_ll, entry);
     lv_free(entry);

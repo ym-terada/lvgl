@@ -61,20 +61,20 @@ void lv_cache_set_manager(lv_cache_manager_t * manager)
     if(_cache_manager.set_max_size_cb != NULL) _cache_manager.set_max_size_cb(_cache_manager.max_size);
 }
 
-lv_cache_entry_t * lv_cache_add(size_t size)
+lv_cache_entry_t * lv_cache_add(const void * data, size_t data_size, size_t memory_usage)
 {
     LV_ASSERT(_cache_manager.locked);
     if(_cache_manager.add_cb == NULL) return NULL;
 
-    return _cache_manager.add_cb(size);
+    return _cache_manager.add_cb(data, data_size, memory_usage);
 }
 
-lv_cache_entry_t * lv_cache_find(const void * info, size_t info_size)
+lv_cache_entry_t * lv_cache_find(const void * data, size_t data_size)
 {
     LV_ASSERT(_cache_manager.locked);
     if(_cache_manager.find_cb == NULL) return NULL;
 
-    return _cache_manager.find_cb(info, info_size);
+    return _cache_manager.find_cb(data, data_size);
 }
 
 void lv_cache_invalidate(lv_cache_entry_t * entry)

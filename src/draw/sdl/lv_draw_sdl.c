@@ -105,31 +105,62 @@ uint8_t sdl_render_buf[1024 * 1024 * 4];
 
 typedef struct {
     const void * draw_dsc;
-    lv_area_t area;
-} cache_info_t;
+    lv_coord_t w;
+    lv_coord_t h;
+    SDL_Texture * texture;
+} cache_data_t;
 
-static void execute_drawing(lv_draw_sdl_unit_t * u)
+
+bool compare_cb(const void * data1, const void * data2, size_t data_size)
 {
-    /*Render the draw task*/
-    lv_draw_task_t * t = u->task_act;
+    const cache_data_t * d1 = data1;
+    const cache_data_t * d2 = data2;
+
+    if(d1->w != d2->w) return false;
+    if(d1->h != d2->h) return false;
+
+    const lv_draw_dsc_base_t * dsc_base1 = d1->draw_dsc;
+    const lv_draw_dsc_base_t * dsc_base2 = d2->draw_dsc;
+
+    if(dsc_base1->dsc_size != dsc_base2->dsc_size) return false;
+    if(memcmp(dsc_base1, dsc_base2, dsc_base1->dsc_size)) return false;
+
+    return true;
+
+}
+
+void invalidate_cb(lv_cache_entry_t * e)
+{
+    const cache_data_t * d = e->data;
+    lv_free((void *)d->draw_dsc);
+    SDL_DestroyTexture(d->texture);
+    lv_free((void *)d);
+    e->data = NULL;
+    e->data_size = 0;
+}
+
+static lv_cache_entry_t * draw_texture(lv_draw_sdl_unit_t * u)
+{
+    lv_draw_task_t * task = u->task_act;
 
     lv_layer_t dest_layer;
     lv_memzero(&dest_layer, sizeof(dest_layer));
-    //    uint8_t * sdl_render_buf = malloc(1024*1024*4);
     dest_layer.buf = lv_draw_buf_align(sdl_render_buf, LV_COLOR_FORMAT_ARGB8888);
     dest_layer.color_format = LV_COLOR_FORMAT_ARGB8888;
 
     lv_area_t a;
-    _lv_area_intersect(&a, u->base_unit.clip_area, &t->area);
-    dest_layer.buf_area = t->area;
-    dest_layer._clip_area = t->area;
+    _lv_area_intersect(&a, u->base_unit.clip_area, &task->area);
+    dest_layer.buf_area = task->area;
+    dest_layer._clip_area = task->area;
     lv_memzero(sdl_render_buf, lv_area_get_size(&dest_layer.buf_area) * 4 + 100);
 
     lv_display_t * disp = _lv_refr_get_disp_refreshing();
 
-    switch(t->type) {
+    uint32_t tick = lv_tick_get();
+
+    switch(task->type) {
         case LV_DRAW_TASK_TYPE_FILL: {
-                lv_draw_fill_dsc_t * fill_dsc = t->draw_dsc;;
+                lv_draw_fill_dsc_t * fill_dsc = task->draw_dsc;
                 lv_draw_rect_dsc_t rect_dsc;
                 lv_draw_rect_dsc_init(&rect_dsc);
                 rect_dsc.base.user_data = lv_sdl_window_get_renderer(disp);
@@ -138,18 +169,11 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
                 rect_dsc.radius = fill_dsc->radius;
                 rect_dsc.bg_opa = fill_dsc->opa;
 
-
-                //                cache_info_t info;
-                //                info.draw_dsc = &rect_dsc;
-                //                info.area = t->area;
-
-                //                lv_cache_find(info, info_size)
-                //
-                lv_draw_rect(&dest_layer, &rect_dsc, &t->area);
+                lv_draw_rect(&dest_layer, &rect_dsc, &task->area);
             }
             break;
         case LV_DRAW_TASK_TYPE_BORDER: {
-                lv_draw_border_dsc_t * border_dsc = t->draw_dsc;;
+                lv_draw_border_dsc_t * border_dsc = task->draw_dsc;;
                 lv_draw_rect_dsc_t rect_dsc;
                 lv_draw_rect_dsc_init(&rect_dsc);
                 rect_dsc.base.user_data = lv_sdl_window_get_renderer(disp);
@@ -159,7 +183,7 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
                 rect_dsc.border_opa = border_dsc->opa;
                 rect_dsc.border_side = border_dsc->side;
                 rect_dsc.border_width = border_dsc->width;
-                lv_draw_rect(&dest_layer, &rect_dsc, &t->area);
+                lv_draw_rect(&dest_layer, &rect_dsc, &task->area);
                 break;
             }
         //        case LV_DRAW_TASK_TYPE_BOX_SHADOW:
@@ -171,17 +195,17 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
         case LV_DRAW_TASK_TYPE_LABEL: {
                 lv_draw_label_dsc_t label_dsc;
                 lv_draw_label_dsc_init(&label_dsc);
-                lv_memcpy(&label_dsc, t->draw_dsc, sizeof(label_dsc));
+                lv_memcpy(&label_dsc, task->draw_dsc, sizeof(label_dsc));
                 label_dsc.base.user_data = lv_sdl_window_get_renderer(disp);
-                lv_draw_label(&dest_layer, &label_dsc, &t->area);
+                lv_draw_label(&dest_layer, &label_dsc, &task->area);
             }
             break;
         case LV_DRAW_TASK_TYPE_IMAGE: {
                 lv_draw_image_dsc_t image_dsc;
                 lv_draw_image_dsc_init(&image_dsc);
-                lv_memcpy(&image_dsc, t->draw_dsc, sizeof(image_dsc));
+                lv_memcpy(&image_dsc, task->draw_dsc, sizeof(image_dsc));
                 image_dsc.base.user_data = lv_sdl_window_get_renderer(disp);
-                lv_draw_image(&dest_layer, &image_dsc, &t->area);
+                lv_draw_image(&dest_layer, &image_dsc, &task->area);
                 break;
             }
         //                case LV_DRAW_TASK_TYPE_ARC:
@@ -200,7 +224,7 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
         //            lv_draw_sw_mask_rect((lv_draw_unit_t *)u, t->draw_dsc, &t->area);
         //            break;
         default:
-            return;
+            return NULL;
             break;
     }
 
@@ -210,13 +234,12 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
         lv_draw_dispatch_layer(disp, &dest_layer);
     }
 
+
     SDL_Rect rect;
     rect.x = dest_layer.buf_area.x1;
     rect.y = dest_layer.buf_area.y1;
     rect.w = lv_area_get_width(&dest_layer.buf_area);
     rect.h = lv_area_get_height(&dest_layer.buf_area);
-
-    SDL_Renderer * renderer = lv_sdl_window_get_renderer(disp);
 
     SDL_Texture * texture = SDL_CreateTexture(lv_sdl_window_get_renderer(disp), SDL_PIXELFORMAT_ARGB8888,
                                               SDL_TEXTUREACCESS_STATIC, rect.w, rect.h);
@@ -224,16 +247,71 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
 
     SDL_UpdateTexture(texture, NULL, sdl_render_buf, rect.w * 4);
 
+    cache_data_t * data = lv_malloc(sizeof(cache_data_t));
+    lv_draw_dsc_base_t * base_dsc = task->draw_dsc;
+
+    data->draw_dsc = lv_malloc(base_dsc->dsc_size);
+    lv_memcpy(data->draw_dsc, base_dsc, base_dsc->dsc_size);
+    data->w = lv_area_get_width(&task->area);
+    data->h = lv_area_get_height(&task->area);
+    data->texture = texture;
+
+    lv_cache_entry_t * e = lv_cache_add(data, sizeof(cache_data_t), lv_area_get_size(&task->area) * 4);
+    e->compare_cb = compare_cb;
+    e->invalidate_cb = invalidate_cb;
+    e->weight = lv_tick_elaps(tick);
+    e->weight += lv_area_get_size(&task->area) / 10000;
+    if(e->weight == 0) e->weight++;
+    return e;
+}
+
+
+
+static void execute_drawing(lv_draw_sdl_unit_t * u)
+{
+    lv_draw_task_t * t = u->task_act;
+
+    cache_data_t data_to_find;
+    data_to_find.draw_dsc = t->draw_dsc;
+    data_to_find.w = lv_area_get_width(&t->area);
+    data_to_find.h = lv_area_get_height(&t->area);
+    data_to_find.texture = NULL;
+
+    lv_cache_lock();
+    lv_cache_entry_t * e = lv_cache_find(&data_to_find, sizeof(data_to_find));
+    if(e == NULL) {
+        e = draw_texture(u);
+    }
+
+    if(e == NULL) {
+        return;
+        lv_cache_unlock();
+    }
+
+    const cache_data_t * data_cached = lv_cache_get_data(e);
+    SDL_Texture * texture = data_cached->texture;
+    lv_display_t * disp = _lv_refr_get_disp_refreshing();
+    SDL_Renderer * renderer = lv_sdl_window_get_renderer(disp);
+
     SDL_Rect clip_rect;
     clip_rect.x = u->base_unit.clip_area->x1;
     clip_rect.y = u->base_unit.clip_area->y1;
     clip_rect.w = lv_area_get_width(u->base_unit.clip_area);
     clip_rect.h = lv_area_get_height(u->base_unit.clip_area);
 
+    SDL_Rect rect;
+    rect.x = t->area.x1;
+    rect.y = t->area.y1;
+    rect.w = lv_area_get_width(&t->area);
+    rect.h = lv_area_get_height(&t->area);
+
     SDL_RenderSetClipRect(renderer, &clip_rect);
     SDL_RenderCopy(renderer, texture, NULL, &rect);
-    SDL_DestroyTexture(texture);
+    //    SDL_DestroyTexture(texture);
     SDL_RenderSetClipRect(renderer, NULL);
+
+    lv_cache_release(e);
+    lv_cache_unlock();
 }
 
 #endif /*LV_USE_DRAW_SDL*/

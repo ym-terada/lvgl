@@ -173,6 +173,7 @@ typedef struct {
     uint32_t id1;
     uint32_t id2;
     lv_layer_t * layer;
+    size_t dsc_size;
     void * user_data;
 } lv_draw_dsc_base_t;
 

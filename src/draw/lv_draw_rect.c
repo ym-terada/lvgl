@@ -59,6 +59,7 @@ void lv_draw_fill_dsc_init(lv_draw_fill_dsc_t * dsc)
 {
     lv_memzero(dsc, sizeof(*dsc));
     dsc->opa = LV_OPA_COVER;
+    dsc->base.dsc_size = sizeof(lv_draw_fill_dsc_t);
 }
 
 void lv_draw_border_dsc_init(lv_draw_border_dsc_t * dsc)
@@ -66,18 +67,21 @@ void lv_draw_border_dsc_init(lv_draw_border_dsc_t * dsc)
     lv_memzero(dsc, sizeof(*dsc));
     dsc->opa = LV_OPA_COVER;
     dsc->side = LV_BORDER_SIDE_FULL;
+    dsc->base.dsc_size = sizeof(lv_draw_border_dsc_t);
 }
 
 void lv_draw_box_shadow_dsc_init(lv_draw_box_shadow_dsc_t * dsc)
 {
     lv_memzero(dsc, sizeof(*dsc));
     dsc->opa = LV_OPA_COVER;
+    dsc->base.dsc_size = sizeof(lv_draw_box_shadow_dsc_t);
 }
 
 void lv_draw_bg_image_dsc_init(lv_draw_bg_image_dsc_t * dsc)
 {
     lv_memzero(dsc, sizeof(*dsc));
     dsc->opa = LV_OPA_COVER;
+    dsc->base.dsc_size = sizeof(lv_draw_bg_image_dsc_t);
 }
 
 

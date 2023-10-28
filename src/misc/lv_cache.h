@@ -27,37 +27,38 @@ extern "C" {
  **********************/
 
 typedef struct _lv_cache_entry_t {
-    /**The image source or other source related to the cache content.*/
-    const void * src;
 
-    /**Some data to describe the cache entry*/
-    const void * info;
-
-    size_t info_size;
+    /** The data to cache*/
+    const void * data;
 
     /**
-     * Called to compare cache entry with an info.
-     * Before calling this function LVGL checks that `info_size` of both entries are the same.
-     * @param e     the cache entry to compare
-     * @param info  the info to compare
-     * @return      true: `info` is related to `e`; false: they are unrelated
+     * Size of data in bytes.
+     * It's not the size of the cached data, just the size of the structure of data pointed by `data`
+     * E.g. `data` can point to descriptor struct and the size of that struct needs to be stored here.*/
+    uint32_t data_size;
+
+    /** Memory in bytes used by data. */
+    uint32_t memory_usage;
+
+    /**
+     * Called to compare the data of cache entries.
+     * Before calling this function LVGL checks that `data_size` of both entries are the same.
+     * This callback look into `data` and check all the pointers and their content on any level.
+     * @param data1      first data to compare
+     * @param data2      second data to compare
+     * @param data_size  size of data
+     * @return           true: `data1` and `data2` are the same
      */
-    bool (*compare_cb)(struct _lv_cache_entry_t * e, const void * info);
+    bool (*compare_cb)(const void * data1, const void * data2, size_t data_size);
 
     /**
-     * Called when the entry is invalidated to free info and src
+     * Called when the entry is invalidated to free its data
      * @param e     the cache entry to free
      */
     void (*invalidate_cb)(struct _lv_cache_entry_t * e);
 
     /** User processing tag*/
     uint32_t process_state;
-
-    /** The data to cache*/
-    const void * data;
-
-    /** Size of data in bytes*/
-    uint32_t data_size;
 
     /** On access to any cache entry, `life` of each cache entry will be incremented by their own `weight` to keep the entry alive longer*/
     uint32_t weight;
@@ -83,18 +84,20 @@ typedef struct _lv_cache_entry_t {
  * Add a new entry to the cache with the given size.
  * It won't allocate any buffers just free enough space to be a new entry
  * with `size` bytes fits.
- * @param size      the size of the new entry in bytes
- * @return          a handler for the new cache entry
+ * @param data          data the cache, can be a complex structure too
+ * @param data_size     the size of data (if it's a struct then the size of the struct)
+ * @param memory_usage  the size of memory used by this entry (`data` might contain pointers so it's size of all buffers related to entry)
+ * @return              a handler for the new cache entry
  */
-typedef lv_cache_entry_t * (*lv_cache_add_cb)(size_t size);
+typedef lv_cache_entry_t * (*lv_cache_add_cb)(const void * data, size_t data_size, size_t memory_usage);
 
 /**
- * Find a cache entry based on its info
- * @param info      the info to find
- * @param info_size size of info
- * @return          the cache entry with given info or NULL if not found
+ * Find a cache entry based on its data
+ * @param data      the data to find
+ * @param data_size size of data
+ * @return          the cache entry with given `data` or NULL if not found
  */
-typedef lv_cache_entry_t * (*lv_cache_find_cb)(const void * info, size_t info_size);
+typedef lv_cache_entry_t * (*lv_cache_find_cb)(const void * data, size_t data_size);
 
 /**
  * Invalidate (drop) a cache entry
@@ -162,19 +165,20 @@ void lv_cache_set_manager(lv_cache_manager_t * manager);
  * Add a new entry to the cache with the given size.
  * It won't allocate any buffers just free enough space to be a new entry
  * with `size` bytes fits.
- * @param size      the size of the new entry in bytes
- * @return          a handler for the new cache entry
+ * @param data          data the cache, can be a complex structure too
+ * @param data_size     the size of data (if it's a struct then the size of the struct)
+ * @param memory_usage  the size of memory used by this entry (`data` might contain pointers so it's size of all buffers related to entry)
+ * @return              a handler for the new cache entry
  */
-lv_cache_entry_t * lv_cache_add(size_t size);
-
+lv_cache_entry_t * lv_cache_add(const void * data, size_t data_size, size_t memory_usage);
 
 /**
- * Find a cache entry based on its info
- * @param info      the info to find
- * @param info_size size of info
- * @return          the cache entry with given info or NULL if not found
+ * Find a cache entry based on its data
+ * @param data      the data to find
+ * @param data_size size of data
+ * @return          the cache entry with given `data` or NULL if not found
  */
-lv_cache_entry_t * lv_cache_find(const void * info, size_t info_size);
+lv_cache_entry_t * lv_cache_find(const void * data, size_t data_size);
 
 /**
  * Invalidate (drop) a cache entry. It will call the entry's `invalidate_cb` to free the resources
