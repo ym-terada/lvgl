@@ -23,6 +23,12 @@
 /**********************
  *      TYPEDEFS
  **********************/
+typedef struct {
+    lv_draw_dsc_base_t * draw_dsc;
+    lv_coord_t w;
+    lv_coord_t h;
+    SDL_Texture * texture;
+} cache_data_t;
 
 /**********************
  *  STATIC PROTOTYPES
@@ -36,10 +42,12 @@ static void evaluate(lv_draw_unit_t * draw_unit, lv_draw_task_t * task);
 /**********************
  *  GLOBAL PROTOTYPES
  **********************/
+static uint8_t sdl_render_buf[1024 * 1024 * 4];
 
 /**********************
  *  STATIC VARIABLES
  **********************/
+static SDL_Texture * layer_get_texture(lv_layer_t * layer);
 
 /**********************
  *      MACROS
@@ -51,7 +59,6 @@ static void evaluate(lv_draw_unit_t * draw_unit, lv_draw_task_t * task);
 
 void lv_draw_sdl_init(void)
 {
-
     lv_draw_sdl_unit_t * draw_sw_unit = lv_draw_create_unit(sizeof(lv_draw_sdl_unit_t));
     draw_sw_unit->base_unit.dispatch_cb = dispatch;
     draw_sw_unit->base_unit.evaluate_cb = evaluate;
@@ -72,9 +79,19 @@ static int32_t dispatch(lv_draw_unit_t * draw_unit, lv_layer_t * layer)
     t = lv_draw_get_next_available_task(layer, NULL, DRAW_UNIT_ID_SDL);
     if(t == NULL) return -1;
 
-    void * buf = lv_draw_layer_alloc_buf(layer);
-    if(buf == NULL) return -1;
 
+    lv_display_t * disp = _lv_refr_get_disp_refreshing();
+    SDL_Texture * texture = layer_get_texture(layer);
+    if(layer != disp->layer_head && texture == NULL) {
+        void * buf = lv_draw_layer_alloc_buf(layer);
+        if(buf == NULL) return -1;
+
+        SDL_Renderer * renderer = lv_sdl_window_get_renderer(disp);
+        lv_coord_t w = lv_area_get_width(&layer->buf_area);
+        lv_coord_t h = lv_area_get_height(&layer->buf_area);
+        layer->user_data = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+                                             SDL_TEXTUREACCESS_TARGET, w, h);
+    }
 
     t->state = LV_DRAW_TASK_STATE_IN_PROGRESS;
     draw_sdl_unit->base_unit.target_layer = layer;
@@ -94,36 +111,26 @@ int32_t (*evaluate_cb)(struct _lv_draw_unit_t * draw_unit, lv_draw_task_t * task
 
 static void evaluate(lv_draw_unit_t * draw_unit, lv_draw_task_t * task)
 {
+    LV_UNUSED(draw_unit);
+
     if(((lv_draw_dsc_base_t *)task->draw_dsc)->user_data == NULL) {
         task->preference_score = 0;
         task->preferred_draw_unit_id = DRAW_UNIT_ID_SDL;
     }
 }
 
-
-uint8_t sdl_render_buf[1024 * 1024 * 4];
-
-typedef struct {
-    const void * draw_dsc;
-    lv_coord_t w;
-    lv_coord_t h;
-    SDL_Texture * texture;
-} cache_data_t;
-
-
 bool compare_cb(const void * data1, const void * data2, size_t data_size)
 {
+    LV_UNUSED(data_size);
     const cache_data_t * d1 = data1;
     const cache_data_t * d2 = data2;
 
     if(d1->w != d2->w) return false;
     if(d1->h != d2->h) return false;
 
-    const lv_draw_dsc_base_t * dsc_base1 = d1->draw_dsc;
-    const lv_draw_dsc_base_t * dsc_base2 = d2->draw_dsc;
+    if(d1->draw_dsc->dsc_size != d2->draw_dsc->dsc_size) return false;
 
-    if(dsc_base1->dsc_size != dsc_base2->dsc_size) return false;
-    if(memcmp(dsc_base1, dsc_base2, dsc_base1->dsc_size)) return false;
+    if(memcmp(d1->draw_dsc, d2->draw_dsc, d1->draw_dsc->dsc_size)) return false;
 
     return true;
 
@@ -139,7 +146,7 @@ void invalidate_cb(lv_cache_entry_t * e)
     e->data_size = 0;
 }
 
-static lv_cache_entry_t * draw_texture(lv_draw_sdl_unit_t * u)
+static lv_cache_entry_t * draw_to_texture(lv_draw_sdl_unit_t * u)
 {
     lv_draw_task_t * task = u->task_act;
 
@@ -234,7 +241,6 @@ static lv_cache_entry_t * draw_texture(lv_draw_sdl_unit_t * u)
         lv_draw_dispatch_layer(disp, &dest_layer);
     }
 
-
     SDL_Rect rect;
     rect.x = dest_layer.buf_area.x1;
     rect.y = dest_layer.buf_area.y1;
@@ -251,7 +257,7 @@ static lv_cache_entry_t * draw_texture(lv_draw_sdl_unit_t * u)
     lv_draw_dsc_base_t * base_dsc = task->draw_dsc;
 
     data->draw_dsc = lv_malloc(base_dsc->dsc_size);
-    lv_memcpy(data->draw_dsc, base_dsc, base_dsc->dsc_size);
+    lv_memcpy((void *)data->draw_dsc, base_dsc, base_dsc->dsc_size);
     data->w = lv_area_get_width(&task->area);
     data->h = lv_area_get_height(&task->area);
     data->texture = texture;
@@ -265,22 +271,61 @@ static lv_cache_entry_t * draw_texture(lv_draw_sdl_unit_t * u)
     return e;
 }
 
+static void blend_texture_layer(lv_draw_sdl_unit_t * u)
+{
+    lv_display_t * disp = _lv_refr_get_disp_refreshing();
+    SDL_Renderer * renderer = lv_sdl_window_get_renderer(disp);
 
+    SDL_Rect clip_rect;
+    clip_rect.x = u->base_unit.clip_area->x1;
+    clip_rect.y = u->base_unit.clip_area->y1;
+    clip_rect.w = lv_area_get_width(u->base_unit.clip_area);
+    clip_rect.h = lv_area_get_height(u->base_unit.clip_area);
 
-static void execute_drawing(lv_draw_sdl_unit_t * u)
+    lv_draw_task_t * t = u->task_act;
+    SDL_Rect rect;
+    rect.x = t->area.x1;
+    rect.y = t->area.y1;
+    rect.w = lv_area_get_width(&t->area);
+    rect.h = lv_area_get_height(&t->area);
+
+    lv_draw_image_dsc_t * draw_dsc = t->draw_dsc;
+    lv_layer_t * src_layer = (lv_layer_t *)draw_dsc->src;
+    SDL_Texture * src_texture = layer_get_texture(src_layer);
+
+    SDL_SetTextureAlphaMod(src_texture, draw_dsc->opa);
+    SDL_SetTextureBlendMode(src_texture, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderTarget(renderer, layer_get_texture(u->base_unit.target_layer));
+    SDL_RenderSetClipRect(renderer, &clip_rect);
+    SDL_RenderCopy(renderer, src_texture, NULL, &rect);
+    SDL_DestroyTexture(src_texture);
+    SDL_RenderSetClipRect(renderer, NULL);
+}
+
+static void draw_from_cached_texture(lv_draw_sdl_unit_t * u)
 {
     lv_draw_task_t * t = u->task_act;
 
     cache_data_t data_to_find;
-    data_to_find.draw_dsc = t->draw_dsc;
+    data_to_find.draw_dsc = (lv_draw_dsc_base_t *)t->draw_dsc;
+    lv_draw_dsc_base_t * base_dsc = t->draw_dsc;
+
     data_to_find.w = lv_area_get_width(&t->area);
     data_to_find.h = lv_area_get_height(&t->area);
     data_to_find.texture = NULL;
 
+    /*user_data stores the renderer to differentiate it from SW rendered tasks.
+     *However the cached texture is independent from the renderer so use NULL user_data*/
+    void * user_data_saved = data_to_find.draw_dsc->user_data;
+    data_to_find.draw_dsc->user_data = NULL;
+
+
     lv_cache_lock();
     lv_cache_entry_t * e = lv_cache_find(&data_to_find, sizeof(data_to_find));
+    data_to_find.draw_dsc->user_data = user_data_saved;
     if(e == NULL) {
-        e = draw_texture(u);
+        printf("cache_miss %d\n", t->type);
+        e = draw_to_texture(u);
     }
 
     if(e == NULL) {
@@ -293,25 +338,49 @@ static void execute_drawing(lv_draw_sdl_unit_t * u)
     lv_display_t * disp = _lv_refr_get_disp_refreshing();
     SDL_Renderer * renderer = lv_sdl_window_get_renderer(disp);
 
+    lv_layer_t * dest_layer = u->base_unit.target_layer;
     SDL_Rect clip_rect;
-    clip_rect.x = u->base_unit.clip_area->x1;
-    clip_rect.y = u->base_unit.clip_area->y1;
+    clip_rect.x = u->base_unit.clip_area->x1 - dest_layer->buf_area.x1;
+    clip_rect.y = u->base_unit.clip_area->y1 - dest_layer->buf_area.y1;
     clip_rect.w = lv_area_get_width(u->base_unit.clip_area);
     clip_rect.h = lv_area_get_height(u->base_unit.clip_area);
 
     SDL_Rect rect;
-    rect.x = t->area.x1;
-    rect.y = t->area.y1;
+    rect.x = t->area.x1 - dest_layer->buf_area.x1;
+    rect.y = t->area.y1 - dest_layer->buf_area.y1;
     rect.w = lv_area_get_width(&t->area);
     rect.h = lv_area_get_height(&t->area);
 
     SDL_RenderSetClipRect(renderer, &clip_rect);
+    SDL_SetRenderTarget(renderer, layer_get_texture(dest_layer));
     SDL_RenderCopy(renderer, texture, NULL, &rect);
-    //    SDL_DestroyTexture(texture);
     SDL_RenderSetClipRect(renderer, NULL);
 
     lv_cache_release(e);
     lv_cache_unlock();
+}
+
+static void execute_drawing(lv_draw_sdl_unit_t * u)
+{
+    lv_draw_task_t * t = u->task_act;
+
+    if(t->type == LV_DRAW_TASK_TYPE_BOX_SHADOW) return;
+    if(t->type == LV_DRAW_TASK_TYPE_LINE) return;
+    if(t->type == LV_DRAW_TASK_TYPE_TRIANGLE) return;
+    if(t->type == LV_DRAW_TASK_TYPE_BG_IMG) return;
+
+
+    if(t->type == LV_DRAW_TASK_TYPE_LAYER) {
+        blend_texture_layer(u);
+    }
+    else {
+        draw_from_cached_texture(u);
+    }
+}
+
+static SDL_Texture * layer_get_texture(lv_layer_t * layer)
+{
+    return layer->user_data;
 }
 
 #endif /*LV_USE_DRAW_SDL*/

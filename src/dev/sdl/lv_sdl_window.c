@@ -155,11 +155,6 @@ SDL_Renderer * lv_sdl_window_get_renderer(lv_display_t * disp)
     return dsc->renderer;
 }
 
-SDL_Texture * lv_sdl_window_get_texture(lv_display_t * disp)
-{
-    lv_sdl_window_t * dsc = lv_display_get_driver_data(disp);
-    return dsc->texture;
-}
 
 void lv_sdl_quit()
 {
@@ -285,6 +280,8 @@ static void window_create(lv_display_t * disp)
 
     dsc->renderer = SDL_CreateRenderer(dsc->window, -1, SDL_RENDERER_SOFTWARE);
     texture_resize(disp);
+
+
     uint32_t px_size = lv_color_format_get_size(lv_display_get_color_format(disp));
     lv_memset(dsc->fb1, 0xff, hor_res * ver_res * px_size);
 #if LV_SDL_DIRECT_MODE_2_BUF

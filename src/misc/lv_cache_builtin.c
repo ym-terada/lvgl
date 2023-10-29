@@ -113,7 +113,9 @@ static lv_cache_entry_t * find_cb(const void * data, size_t data_size)
     lv_cache_entry_t * entry = _lv_ll_get_head(&dsc.entry_ll);
     while(entry) {
         if(entry->data_size == data_size) {
-            if(entry->compare_cb(entry->data, data, data_size)) return entry;
+            if(entry->compare_cb(entry->data, data, data_size)) {
+                return entry;
+            }
         }
 
         entry = _lv_ll_get_next(&dsc.entry_ll, entry);

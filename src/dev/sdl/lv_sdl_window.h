@@ -44,8 +44,6 @@ void lv_sdl_window_set_title(lv_display_t * disp, const char * title);
 
 SDL_Renderer * lv_sdl_window_get_renderer(lv_display_t * disp);
 
-SDL_Texture * lv_sdl_window_get_texture(lv_display_t * disp);
-
 void lv_sdl_quit();
 
 /**********************
