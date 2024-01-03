@@ -23,7 +23,8 @@ A rough description of how to implement it.
 
 Possible issues and difficulties that we already see.
 
-## Considerations:
+## Considerations
+
 Other approaches that we have considered but dropped (just for the record).
 
 ## Testing
