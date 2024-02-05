@@ -321,7 +321,7 @@ enum _lv_style_prop_t {
     LV_STYLE_GRID_CELL_Y_ALIGN      = 139,
 #endif
 
-    _LV_STYLE_LAST_BUILT_IN_PROP     = 130,
+    _LV_STYLE_LAST_BUILT_IN_PROP     = 140,
 
     _LV_STYLE_NUM_BUILT_IN_PROPS     = _LV_STYLE_LAST_BUILT_IN_PROP + 1,
 
