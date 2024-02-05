@@ -389,6 +389,11 @@ props = [
  'style_type': 'num',   'var_type': 'lv_base_dir_t', 'default':'`LV_BASE_DIR_AUTO`', 'inherited': 1, 'layout': 1, 'ext_draw': 0,
  'dsc': "Set the base direction of the object. The possible values are `LV_BIDI_DIR_LTR/RTL/AUTO`."},
 
+{'name': 'ROTARY_SENSITIVITY',
+ 'style_type': 'num',   'var_type': 'uint32_t', 'default':'`256`', 'inherited': 0, 'layout': 0, 'ext_draw': 0,
+ 'dsc': "Adjust the sensitivity for rotary encoders in 1/256 unit. It means, 128: slow down the rotary to half, 512: speeds up to double, 256: no change"},
+
+
 
 {'section': 'Flex', 'dsc':'Flex layout properties.',  'guard':'LV_USE_FLEX'},
 
